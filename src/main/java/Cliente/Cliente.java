@@ -33,6 +33,8 @@ public class Cliente {
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 
+
+
             System.out.println("Conectado al servidor: " + serverAddress + ":" + serverPort);
             while (opcion != 0) {
                 try {
@@ -70,6 +72,7 @@ public class Cliente {
         System.out.println("3. Listar usuarios totales");
         System.out.println("4. Listar usuarios conectados");
         System.out.println("5. Administrar grupo");
+        System.out.println("6. Enviar mensaje a todos");
 
         try {
             opcion = Integer.parseInt(scanner2.nextLine());
@@ -182,7 +185,14 @@ public class Cliente {
                 }else{
                     
                 }
-            } else {
+            } else if (opcion== 6) {
+                out.writeUTF("mensajetodos");
+                System.out.println("Que texto quieres enviar?");
+                out.writeUTF(scanner.nextLine());
+                System.out.println("Texto enviado");
+
+
+            }else{
                 System.out.println("Opción no válida.");
             }
         } catch (EOFException e) {
@@ -308,5 +318,53 @@ public class Cliente {
         }
 
     }
+    static class MessageReceiver extends Thread {
+        private Socket socket;
+        private DataInputStream input;
 
+        public MessageReceiver(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                input = new DataInputStream(socket.getInputStream());
+
+                // Esperar el mensaje de inicio
+                char startMessage = input.readChar();
+                if (!"y".equals(startMessage)) {
+                    return;  // Si no recibimos el mensaje esperado, terminamos el hilo
+                }
+
+                // Una vez recibido el mensaje de inicio, procesamos mensajes normalmente
+                while (true) {
+                    if (socket.isClosed()) {
+                        break; // Si el socket está cerrado, salimos del bucle
+                    }
+
+                    String message = input.readUTF();
+                    System.out.println("Mensaje recibido: " + message);
+
+                    if ("n".equals(message)) {
+                        System.out.println("Deteniendo el receptor de mensajes.");
+                        input.close();
+                        socket.close();
+                        break; // Si recibimos el mensaje "STOP", salimos del bucle
+                    }
+                }
+            } catch (SocketException se) {
+                System.out.println("Socket cerrado o conexión interrumpida.");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }
+
+
+
+
+
+
+

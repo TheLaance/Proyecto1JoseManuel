@@ -1,6 +1,8 @@
 package Servidor;
 
-import javax.xml.crypto.Data;
+
+
+
 import java.io.*;
 import java.net.*;
 import java.sql.Connection;
@@ -8,6 +10,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,6 +22,7 @@ public class Servidor {
     private static final String CONTRASENA_DB = "Jose1234";
     private static Set<String> IPsConectadas = Collections.synchronizedSet(new HashSet<>());
 
+    private static ArrayList<Socket> clients = new ArrayList<>();
 
     public static void main(String[] args) {
 
@@ -38,6 +42,7 @@ public class Servidor {
     }
 
     private static void handleClientConnections() {
+
         int port = 56000; // Puerto del servidor
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -55,6 +60,7 @@ public class Servidor {
                 } else {
                     // Agregar el socket del cliente a la lista de clientes conectados
                     System.out.println("Conexión aceptada desde " + IPCliente);
+                    clients.add(clientSocket);
                     IPsConectadas.add(IPCliente);
 
                     // Crear un hilo para manejar la comunicación con el cliente
@@ -89,9 +95,10 @@ public class Servidor {
 
     static class ClientHandler implements Runnable {
 
-        private Socket clientSocket;
+        private static Socket clientSocket;
         private DataInputStream in;
         private DataOutputStream out;
+
 
         public ClientHandler(Socket socket) {
             this.clientSocket = socket;
@@ -172,13 +179,18 @@ public class Servidor {
                                 String Id = in.readUTF();
                                 conocerGrupo(in, out, Id);
                                 String grupo = in.readUTF();
-                                out.writeBoolean(eliminarGrupo(in, out, grupo));
+                                out.writeBoolean(eliminarGrupo(grupo));
                                 break;
 
                             }
                             case "addUser": {
                                 String Id = in.readUTF();
                                 conocerGrupo(in, out, Id);
+                                break;
+                            }
+                            case "mensajetodos": {
+                                String text = in.readUTF();
+                                enviarMenssageT(in,out,text);
                                 break;
                             }
                             default:
@@ -227,12 +239,10 @@ public class Servidor {
 
         /**
          *
-         * @param in
-         * @param out
          * @param nombre
          * @return
          */
-        private static boolean eliminarGrupo(DataInputStream in, DataOutputStream out, String nombre) {
+        private static boolean eliminarGrupo( String nombre) {
             String sql = "SELECT * FROM grupo WHERE nombre = ?";
             try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql);) {
                 stmt.setString(1, nombre);
@@ -251,6 +261,22 @@ public class Servidor {
                 System.out.println("No se ha podido hacer una conexion con la base de datos eliminarGrupo");
             }
             return false;
+        }
+
+        private static void enviarMenssageT(DataInputStream in, DataOutputStream out,String text) throws IOException {
+
+            while (true) {
+                String message = in.readUTF();
+                for (Socket client : clients) {
+                    if (client != clientSocket) {  // No enviar de regreso al remitente original
+                        out.writeChars("y");
+                        DataOutputStream output = new DataOutputStream(client.getOutputStream());
+                        output.writeUTF(message);
+                        out.writeChars("n");
+                    }
+                }
+            }
+
         }
 
         /**
