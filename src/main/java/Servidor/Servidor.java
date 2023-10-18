@@ -1,8 +1,7 @@
 package Servidor;
 
 
-
-
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.*;
 import java.sql.Connection;
@@ -186,11 +185,18 @@ public class Servidor {
                             case "addUser": {
                                 String Id = in.readUTF();
                                 conocerGrupo(in, out, Id);
+                                String grupo = in.readUTF();
+                                enviarDatos(in, out);
+                                String user = in.readUTF();
+                                out.writeBoolean(adduser(in,out,user,grupo));
                                 break;
                             }
-                            case "mensajetodos": {
-                                String text = in.readUTF();
-                                enviarMenssageT(in,out,text);
+                            case "saberUser": {
+                                String id = in.readUTF();
+                                saberUser(in,out,id);
+                                String grupo = in.readUTF();
+                                saberGrupo(in, out, grupo);
+
                                 break;
                             }
                             default:
@@ -210,12 +216,99 @@ public class Servidor {
             }
         }
 
+
+        private static void saberGrupo(DataInputStream in, DataOutputStream out, String grupo){
+
+            String sql = "SELECT (SELECT usuario FROM usuario WHERE id = ug.id_usuario) AS usuario FROM usuario_grupo ug WHERE id_grupo = (SELECT id_grupo FROM grupo WHERE nombre = ?);";
+            try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql); ) {
+                stmt.setString(1, grupo);
+                ResultSet ejecucion = stmt.executeQuery();
+
+                while (ejecucion.next()) {
+                    String nombre = ejecucion.getString("usuario");
+                    out.writeUTF(nombre);
+                    // Espera confirmación del cliente antes de enviar el siguiente nombre
+                    String ok = in.readUTF();
+                    // Aquí esperamos una respuesta del cliente, como "OK", antes de continuar
+                }
+                // Envía un mensaje de finalización para informar al cliente que no hay más datos
+                out.writeUTF("FIN");
+
+
+
+            } catch (SQLException | IOException e) {
+                System.out.println("No se ha podido hacer una conexion con la base de datos saberGrupo");
+            }
+
+        }
+
+        private static void saberUser(DataInputStream in, DataOutputStream out, String id){
+            String sql = "SELECT g.nombre FROM usuario_grupo ug JOIN grupo g ON ug.id_grupo = g.id WHERE ug.id_usuario = ?";
+            try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql); ) {
+                stmt.setString(1, id);
+                ResultSet ejecucion = stmt.executeQuery();
+
+                while (ejecucion.next()) {
+                    String nombre = ejecucion.getString("nombre");
+                    out.writeUTF(nombre);
+                    // Espera confirmación del cliente antes de enviar el siguiente nombre
+                    String ok = in.readUTF();
+                    // Aquí esperamos una respuesta del cliente, como "OK", antes de continuar
+                }
+                // Envía un mensaje de finalización para informar al cliente que no hay más datos
+                out.writeUTF("FIN");
+
+
+
+            } catch (SQLException | IOException e) {
+                System.out.println("No se ha podido hacer una conexion con la base de datos saberUser");
+            }
+        }
+
+        private static boolean adduser(DataInputStream in, DataOutputStream out, String user, String Grupo) {
+
+            String sql = "SELECT id FROM grupo WHERE nombre = ?";
+            try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql);) {
+                stmt.setString(1, Grupo);
+                ResultSet ejecucion = stmt.executeQuery();
+                if (ejecucion.next()) {
+
+                    String id = ejecucion.getString("id");
+
+
+                    PreparedStatement stmt1 = conn.prepareStatement("SELECT id FROM usuario WHERE usuario = ?");
+                    stmt1.setString(1, user);
+                    ResultSet ejecucion1 = stmt1.executeQuery();
+
+
+                    if (ejecucion1.next()) {
+
+                        String user1 = ejecucion1.getString("id");
+                        String consultaInsercion = "INSERT INTO usuario_grupo (id_usuario, id_grupo) VALUES (?, ?)";
+                        PreparedStatement statementInsercion = conn.prepareStatement(consultaInsercion);
+                        statementInsercion.setString(1, user1);
+                        statementInsercion.setString(2, id);
+                        statementInsercion.executeUpdate();
+
+                        return true;
+                    }
+                    return false;
+                }
+                return false;
+
+            } catch (SQLException e) {
+                System.out.println("No se ha podido hacer una conexion con la base de datos conocerGrupo");
+            }
+            return false;
+        }
+
+
         /**
-         *
          * @param in
          * @param out
          * @param id
          */
+
         private static void conocerGrupo(DataInputStream in, DataOutputStream out, String id) {
             String sql = "SELECT * FROM grupo WHERE id_dueño = ?";
             try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql);) {
@@ -238,12 +331,12 @@ public class Servidor {
         }
 
         /**
-         *
          * @param nombre
          * @return
          */
-        private static boolean eliminarGrupo( String nombre) {
+        private static boolean eliminarGrupo(String nombre) {
             String sql = "SELECT * FROM grupo WHERE nombre = ?";
+
             try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement stmt = conn.prepareStatement(sql);) {
                 stmt.setString(1, nombre);
                 ResultSet ejecucion = stmt.executeQuery();
@@ -255,6 +348,7 @@ public class Servidor {
                 PreparedStatement eliminar = conn.prepareStatement("DELETE FROM grupo WHERE nombre = ?");
                 eliminar.setString(1, nombre);
 
+
                 eliminar.executeUpdate();
                 return true;
             } catch (SQLException e) {
@@ -263,21 +357,6 @@ public class Servidor {
             return false;
         }
 
-        private static void enviarMenssageT(DataInputStream in, DataOutputStream out,String text) throws IOException {
-
-            while (true) {
-                String message = in.readUTF();
-                for (Socket client : clients) {
-                    if (client != clientSocket) {  // No enviar de regreso al remitente original
-                        out.writeChars("y");
-                        DataOutputStream output = new DataOutputStream(client.getOutputStream());
-                        output.writeUTF(message);
-                        out.writeChars("n");
-                    }
-                }
-            }
-
-        }
 
         /**
          * @param in
@@ -304,7 +383,6 @@ public class Servidor {
         }
 
         /**
-         *
          * @param in
          * @param out
          */
@@ -328,7 +406,6 @@ public class Servidor {
         }
 
         /**
-         *
          * @param id
          */
         private static void eliminarUsuario(int id) {
@@ -350,13 +427,13 @@ public class Servidor {
         }
 
         /**
-         *
+         * Metodo para crear el grupo con un usuario logeado
          * @param nombregrupo
          * @param id
          * @return
          */
         private boolean crearGrupo(String nombregrupo, String id) {
-            //Metodo para crear el grupo con un usuario logeado
+
             String consulta = "SELECT * FROM grupo WHERE nombre = ?";
             try (Connection conn = DriverManager.getConnection(URL, USUARIO_DB, CONTRASENA_DB); PreparedStatement checkGroupStmt = conn.prepareStatement(consulta);) {
                 checkGroupStmt.setString(1, nombregrupo);
@@ -371,7 +448,21 @@ public class Servidor {
                 createGroupStmt.setString(1, nombregrupo);
                 createGroupStmt.setString(2, id);
                 createGroupStmt.executeUpdate();
-                return true;
+
+                PreparedStatement createGroupStmt2 = conn.prepareStatement(consulta);
+                createGroupStmt2.setString(1, nombregrupo);
+                ResultSet ejecucion1 = createGroupStmt2.executeQuery();
+                if (ejecucion1.next()){
+                    String grupo = ejecucion1.getString("id");
+
+
+                    PreparedStatement createGroupStmt1 = conn.prepareStatement("INSERT INTO usuario_grupo (id_usuario, id_grupo) VALUES (?, ?)");
+                    createGroupStmt1.setString(1, id);
+                    createGroupStmt1.setString(2, grupo);
+                    createGroupStmt1.executeUpdate();
+                    return true;
+                }
+
             } catch (SQLException e) {
                 System.out.println("No se ha podido hacer una conexion con la base de datos crearGrupo");
             }
@@ -380,7 +471,6 @@ public class Servidor {
         }
 
         /**
-         *
          * @param nombreCliente
          * @return
          */
@@ -408,7 +498,6 @@ public class Servidor {
         }
 
         /**
-         *
          * @param usuario
          * @param contrasena
          * @return
@@ -434,13 +523,12 @@ public class Servidor {
                     return true;
                 }
             } catch (SQLException e) {
-                System.out.println("No se ha podido hacer una conexion con la base de datos registrarUsuario");
+                System.out.println("No se ha pojdido hacer una conexion con la base de datos registrarUsuario");
                 return false;
             }
         }
 
         /**
-         *
          * @param usuario
          * @param contrasena
          * @return
@@ -464,7 +552,6 @@ public class Servidor {
         }
 
         /**
-         *
          * @param usuarioId
          */
         private void registrarLogin(int usuarioId) {
