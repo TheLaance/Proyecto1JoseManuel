@@ -333,7 +333,7 @@ public class Cliente {
 
                 // Esperar el mensaje de inicio
                 char startMessage = input.readChar();
-                if (!"y".equals(startMessage)) {
+                if (startMessage == 'y' ) {
                     return;  // Si no recibimos el mensaje esperado, terminamos el hilo
                 }
 
@@ -346,7 +346,7 @@ public class Cliente {
                     String message = input.readUTF();
                     System.out.println("Mensaje recibido: " + message);
 
-                    if ("n".equals(message)) {
+                    if (startMessage == 'n' ) {
                         System.out.println("Deteniendo el receptor de mensajes.");
                         input.close();
                         socket.close();
