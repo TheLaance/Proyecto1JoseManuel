@@ -11,6 +11,7 @@ public class Cliente {
     private static boolean loggin = false;
     private static int opcion = 1;
     private static Scanner scanner = new Scanner(System.in);
+    private static Scanner scanner2 = new Scanner(System.in);
     private static String usuario_ac;
 
     public static void main(String[] args) {
@@ -36,7 +37,7 @@ public class Cliente {
             while (opcion != 0) {
                 try {
                     while (opcion != 0 && loggin == false) {
-                        System.out.println("");
+
                         System.out.println("");
 
                         opciones(in, out);
@@ -44,7 +45,7 @@ public class Cliente {
                     }
 
                     while (loggin == true) {
-                        System.out.println("");
+
                         System.out.println("");
                         opciones2(in, out);
                     }
@@ -71,7 +72,7 @@ public class Cliente {
         System.out.println("5. Administrar grupo");
 
         try {
-            opcion = Integer.parseInt(scanner.nextLine());
+            opcion = Integer.parseInt(scanner2.nextLine());
             if (opcion == 1) {
                 System.out.println("Tu id es: " + usuario_ac);
                 System.out.println("Nombre del grupo que quieres crear: ");
@@ -115,13 +116,14 @@ public class Cliente {
                 out.writeUTF("listar_ac");
                 System.out.println("Esta es la lista de usuarios logeados ahora mismo");
                 while (true) {
-                    String nombre = in.readUTF();
 
+                    String nombre = in.readUTF();
                     if ("FIN".equals(nombre)) {
                         // Si el dato recibido es "FIN", significa que ya no hay más datos para recibir
                         System.out.println("Todos los datos han sido recibidos.");
                         break;
                     }
+
                     System.out.println(nombre);
                     System.out.println("");// Leer un valor enviado por el servidor
                     // Enviar confirmación al servidor para recibir el siguiente dato
@@ -132,13 +134,51 @@ public class Cliente {
                 System.out.println("2. Listar usuarios del grupo");
                 System.out.println("3. Borrar usuario de grupo");
                 System.out.println("4. Añadir usuario a grupo");
-                String opcion3 = scanner.nextLine();
-                if(opcion3 == "1"){
+                Integer opcion3 = Integer.parseInt(scanner.nextLine());
+                if(opcion3 == 1){
+                    out.writeUTF("conocerGrupos");
+                    out.writeUTF(usuario_ac);
                     System.out.println("Grupos que puedes borrar");
-                    out.writeUTF("");
-                    
-                }else if (opcion3 == "2"){
-                    
+                    while (true) {
+                        String nombre = in.readUTF();
+
+                        if ("FIN".equals(nombre)) {
+                            // Si el dato recibido es "FIN", significa que ya no hay más datos para recibir
+                            System.out.println("Todos los datos han sido recibidos.");
+                            break;
+                        }
+                        System.out.println(nombre);
+                        System.out.println("");// Leer un valor enviado por el servidor
+                        // Enviar confirmación al servidor para recibir el siguiente dato
+                        out.writeUTF("OK");
+                    }
+                    System.out.println("Que nombre de grupo quieres borrar?");
+                    String grupo = scanner.nextLine();
+                    if(!grupo.isEmpty()) {
+                        out.writeUTF(grupo);
+                    }
+                    if (in.readBoolean()==true){
+                        System.out.println("Grupo " + grupo + " ha quedado eliminado.");
+                    }else {
+                        System.out.println("No se ha eliminado el grupo, prueba a volver a intentarlo");
+                    }
+
+                } else if (opcion3 == 2){
+                    out.writeUTF("addUser");
+                    out.writeUTF(usuario_ac);
+                    while (true) {
+                        String nombre = in.readUTF();
+
+                        if ("FIN".equals(nombre)) {
+                            // Si el dato recibido es "FIN", significa que ya no hay más datos para recibir
+                            System.out.println("Todos los datos han sido recibidos.");
+                            break;
+                        }
+                        System.out.println(nombre);
+                        System.out.println("");// Leer un valor enviado por el servidor
+                        // Enviar confirmación al servidor para recibir el siguiente dato
+                        out.writeUTF("OK");
+                    }
                 }else{
                     
                 }
@@ -147,6 +187,8 @@ public class Cliente {
             }
         } catch (EOFException e) {
             System.out.println("El cliente se ha desconectado inesperadamente");
+        }catch (NumberFormatException e){
+            System.out.println("Usa un caracter correcto");
         }
     }
 
@@ -159,7 +201,12 @@ public class Cliente {
         System.out.println("3. Listar usuarios totales");
         System.out.println("4. Listar usuarios conectados");
         System.out.println("0. Finalizar");
-        opcion = Integer.parseInt(scanner.nextLine());
+        try{
+            opcion = Integer.parseInt(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Usa un caracter correcto");
+        }
+
 
         switch (opcion) {
             case 1: {
