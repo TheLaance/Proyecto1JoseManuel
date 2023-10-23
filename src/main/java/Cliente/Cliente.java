@@ -15,6 +15,8 @@ public class Cliente {
     private static Scanner scanner2 = new Scanner(System.in);
     private static String usuario_ac;
 
+    private static Socket socket;
+
     public static void main(String[] args) {
         Properties properties = new Properties();
         try {
@@ -29,7 +31,7 @@ public class Cliente {
         int serverPort = Integer.parseInt(properties.getProperty("puerto_servidor"));
 
         try {
-            Socket socket = new Socket(serverAddress, serverPort);
+            socket = new Socket(serverAddress, serverPort);
 
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
@@ -72,7 +74,7 @@ public class Cliente {
         System.out.println("3. Listar usuarios totales");
         System.out.println("4. Listar usuarios conectados");
         System.out.println("5. Administrar grupo");
-        System.out.println("6. Enviar mensaje a todos");
+        System.out.println("6. Archivos");
 
         try {
             opcion = Integer.parseInt(scanner2.nextLine());
@@ -185,7 +187,14 @@ public class Cliente {
 
                 }
             } else if (opcion == 6) {
+                System.out.println("1. Enviar Archvio");
+                Integer opcion3 = Integer.parseInt(scanner.nextLine());
 
+
+                if (opcion3 == 1){
+                    out.writeUTF("enviar archivo");
+
+                }
 
             } else {
                 System.out.println("Opción no válida.");
@@ -196,6 +205,8 @@ public class Cliente {
             System.out.println("Usa un caracter correcto");
         }
     }
+
+
 
     private static void Extractor(DataInputStream in, DataOutputStream out) throws IOException {
         while (true) {
@@ -304,7 +315,7 @@ public class Cliente {
                 break;
             }
             case 0: {
-
+                socket.close();
                 System.out.println("Sesion Finalizada con exito.");
                 break;
             }

@@ -199,6 +199,12 @@ public class Servidor {
 
                                 break;
                             }
+                            case "enviar archivo": {
+
+
+
+                                break;
+                            }
                             default:
                                 break;
 
@@ -347,6 +353,7 @@ public class Servidor {
                 // No se ha encontrado lo elimina y devuelve verdadero
                 PreparedStatement eliminar = conn.prepareStatement("DELETE FROM grupo WHERE nombre = ?");
                 eliminar.setString(1, nombre);
+
 
 
                 eliminar.executeUpdate();

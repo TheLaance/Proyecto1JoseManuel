@@ -37,6 +37,7 @@ public class UserDB {
             rs.moveToInsertRow();
             rs.updateInt("id", id);
             rs.updateString("usuario", u.getName());
+            rs.updateString("password", u.getPassword());
 
 
             rs.insertRow();
@@ -45,6 +46,60 @@ public class UserDB {
             throw new DadesException("Error en " + ex.getStackTrace()[0].getMethodName() + ":" + ex.toString());
         }
 
+    }
+
+    //cambiar a boolean
+    public static User getUserByUsername(Connection con, String userName) throws DadesException {
+        User ret;
+
+        Statement sentencia;
+
+        try {
+            sentencia = con.createStatement();
+            sentencia.executeQuery("SELECT * FROM usuario WHERE name = " + userName);
+            ResultSet rs = sentencia.getResultSet();
+            ret = new User(rs.getInt("id"), rs.getString("usuario"));
+        } catch (SQLException ex) {
+            throw new DadesException("Error en " + ex.getStackTrace()[0].getMethodName() + ":" + ex);
+        }
+
+        return ret;
+    }
+
+    public static boolean userExist(Connection con, String userName)throws DadesException{
+        boolean ret = false;
+
+        Statement sentencia;
+
+        try{
+            sentencia = con.createStatement();
+            sentencia.executeQuery("SELECT * FROM usuario WHERE name = " + userName);
+            ResultSet rs = sentencia.getResultSet();
+            if(rs.next()){
+                ret = true;
+            }
+        }catch(SQLException ex){
+            throw new DadesException("Error en " + ex.getStackTrace()[0].getMethodName() + ":" + ex);
+        }
+
+        return ret;
+    }
+
+    public static User getUserById(Connection con, int id) throws DadesException {
+        User ret = new User();
+
+        Statement sentencia;
+
+        try {
+            sentencia = con.createStatement();
+            sentencia.executeQuery("SELECT * FROM usuario WHERE id = "+ id);
+            ResultSet rs = sentencia.getResultSet();
+            ret = new User(rs.getInt("id"), rs.getString("usuario"));
+        } catch (SQLException ex) {
+            throw new DadesException("Error en " + ex.getStackTrace()[0].getMethodName() + ":" + ex.toString());
+        }
+
+        return ret;
     }
 
 
