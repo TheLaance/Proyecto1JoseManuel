@@ -14,8 +14,11 @@ public class Cliente {
     private static Scanner scanner = new Scanner(System.in);
     private static Scanner scanner2 = new Scanner(System.in);
     private static String usuario_ac;
+    private static String Id;
 
     private static Socket socket;
+    private static int max;
+    private static String path;
 
     public static void main(String[] args) {
         Properties properties = new Properties();
@@ -27,8 +30,11 @@ public class Cliente {
             System.out.println("No hay archivo de configuracion del cliente o esta mal configurado");
         }
 
+        Id = properties.getProperty("nombre_cliente");
         String serverAddress = properties.getProperty("ip_servidor");
         int serverPort = Integer.parseInt(properties.getProperty("puerto_servidor"));
+        max = Integer.parseInt(properties.getProperty("tamano_maximo"));
+        path = properties.getProperty("path");
 
         try {
             socket = new Socket(serverAddress, serverPort);
@@ -37,7 +43,11 @@ public class Cliente {
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 
 
+            out.writeUTF(Id);
+
+
             System.out.println("Conectado al servidor: " + serverAddress + ":" + serverPort);
+            System.out.println(in.readUTF());
             while (opcion != 0) {
                 try {
                     while (opcion != 0 && loggin == false) {
@@ -187,14 +197,44 @@ public class Cliente {
 
                 }
             } else if (opcion == 6) {
+                System.out.println();
+                OutputStream outfilename = socket.getOutputStream();
+                OutputStream fileOutputStream = socket.getOutputStream();
                 System.out.println("1. Enviar Archvio");
                 Integer opcion3 = Integer.parseInt(scanner.nextLine());
 
 
                 if (opcion3 == 1){
+                    String filePath;
                     out.writeUTF("enviar archivo");
+                    System.out.println("Indica la ruta del archivo con la extension");
+                    filePath = scanner2.nextLine();
+                    File file = new File(filePath);
+                    String FileName = file.getName();
+                    byte[] FileNameByte = FileName.getBytes();
+                    if (isFileSizeValid(file)){
+                        System.out.println("Indica que permiso deseas, Privado = -1, publico = 0, grupo = 1");
+                        int p = scanner.nextInt();
+                        out.writeInt(p);
+                        outfilename.write(FileNameByte);
+                        FileInputStream fileInputStream = new FileInputStream(file);
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+
+                        while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                            fileOutputStream.write(buffer, 0, bytesRead);
+                        }
+
+                        System.out.println("Archivo enviado con éxito: " + FileName);
+                        fileInputStream.close();
+                    }else {
+                        System.out.println("El archivo es demasiado pesado");
+                    }
+
 
                 }
+                outfilename.close();
+                fileOutputStream.close();
 
             } else {
                 System.out.println("Opción no válida.");
@@ -204,6 +244,11 @@ public class Cliente {
         } catch (NumberFormatException e) {
             System.out.println("Usa un caracter correcto");
         }
+    }
+
+    private static boolean isFileSizeValid (File file){
+
+        return file.length() <= max;
     }
 
 
@@ -315,6 +360,8 @@ public class Cliente {
                 break;
             }
             case 0: {
+                out.writeUTF("cerrar conexion");
+                out.writeUTF(Id);
                 socket.close();
                 System.out.println("Sesion Finalizada con exito.");
                 break;

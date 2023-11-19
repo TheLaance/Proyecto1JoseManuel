@@ -9,21 +9,38 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+
+import static Servidor.Servidor.ClientHandler.addStringIfMissing;
 
 public class Servidor {
 
     private static final String URL = "jdbc:mysql://localhost:3306/ABP";
     private static final String USUARIO_DB = "root";
-    private static final String CONTRASENA_DB = "Jose1234";
-    private static Set<String> IPsConectadas = Collections.synchronizedSet(new HashSet<>());
+    private static String CONTRASENA_DB = "";
+    private static final String CONFIG_FILE = "server.properties";
+
 
     private static ArrayList<Socket> clients = new ArrayList<>();
+    private static ArrayList<String> list = new ArrayList<String>();
+    private static String name;
 
     public static void main(String[] args) {
+        Properties properties = new Properties();
+
+
+        try {
+            FileInputStream input = new FileInputStream(CONFIG_FILE);
+            properties.load(input);
+            input.close();
+
+        } catch (IOException e) {
+            System.out.println("Archivo no leido");
+        }
+
+        CONTRASENA_DB = properties.getProperty("pass");
+        name = properties.getProperty("name");
+
 
         Thread clientAcceptThread = new Thread(() -> handleClientConnections());
         clientAcceptThread.start();
@@ -44,6 +61,7 @@ public class Servidor {
 
         int port = 56000; // Puerto del servidor
 
+
         try (ServerSocket serverSocket = new ServerSocket(port)) {
 
             System.out.println("Servidor en línea. Esperando clientes...");
@@ -51,16 +69,24 @@ public class Servidor {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 String IPCliente = clientSocket.getInetAddress().getHostAddress();
+                DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+                DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
+                String id = in.readUTF();
 
-                if (IPsConectadas.contains(IPCliente)) {
-                    System.out.println("Intento de conexión desde " + IPCliente + " rechazado.");
+                if (addStringIfMissing(list, id) == false) {
+                    System.out.println("Intento de conexión desde " + id + " rechazado.");
 
-                    clientSocket.close();
+
+                        clientSocket.close();
+
+
                 } else {
                     // Agregar el socket del cliente a la lista de clientes conectados
-                    System.out.println("Conexión aceptada desde " + IPCliente);
+                    System.out.println("Conexión aceptada desde " + id);
                     clients.add(clientSocket);
-                    IPsConectadas.add(IPCliente);
+                    out.writeUTF("Conectado al servidor: " + name);
+
+
 
                     // Crear un hilo para manejar la comunicación con el cliente
                     Thread clientThread = new Thread(new ClientHandler(clientSocket));
@@ -104,6 +130,9 @@ public class Servidor {
             try {
                 in = new DataInputStream(clientSocket.getInputStream());
                 out = new DataOutputStream(clientSocket.getOutputStream());
+//                InputStream inputStream = clientSocket.getInputStream();
+//                FileOutputStream fileOutputStream = new FileOutputStream(FILE_TO_RECEIVE);
+//                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -121,10 +150,8 @@ public class Servidor {
 
                         String opcion = in.readUTF();
                         switch (opcion) {
-                            case "numero": {
-                                out.writeUTF("1");
-                                break;
-                            }
+
+
                             case "registro": {
                                 // Registrar un nuevo usuario
                                 String usuario = in.readUTF();
@@ -205,6 +232,11 @@ public class Servidor {
 
                                 break;
                             }
+                            case "cerrar conexion": {
+                                String Id = in.readUTF();
+                                list.remove(Id);
+                                break;
+                            }
                             default:
                                 break;
 
@@ -212,7 +244,8 @@ public class Servidor {
                     } catch (EOFException e) {
                         // El cliente se desconectó inesperadamente
                         System.out.println("Cliente se desconectó inesperadamente desde: " + clientSocket.getInetAddress());
-                        IPsConectadas.remove(clientSocket.getInetAddress());
+
+
 
                         break; // Salir del bucle mientras
                     }
@@ -572,5 +605,13 @@ public class Servidor {
             }
         }
 
+        public static boolean addStringIfMissing(ArrayList<String> list, String str) {
+            if (!list.contains(str)) {
+                list.add(str);
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 }
